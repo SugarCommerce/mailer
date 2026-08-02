@@ -2,7 +2,7 @@
 /**
  * An email address with an optional display name.
  *
- * @package   SugarMill\Mailer
+ * @package   Sugar\Mailer
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace SugarMill\Mailer;
+namespace Sugar\Mailer;
 
 /**
  * Class Address

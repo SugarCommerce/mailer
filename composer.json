@@ -1,19 +1,19 @@
 {
-  "name": "sugarmill/mailer",
+  "name": "sugarcommerce/mailer",
   "version": "1.0.0",
   "description": "Transactional email for self-hosted PHP. One Message, many transports: Postmark, Resend, Amazon SES, Cloudflare Email, SMTP, plus log and in-memory for development. Full MIME serialisation with inline images, attachments and RFC 2047 headers. Header-injection safe. Zero dependencies.",
   "type": "library",
   "license": "GPL-2.0-or-later",
-  "homepage": "https://github.com/sugarmill/mailer",
+  "homepage": "https://github.com/sugarcommerce/mailer",
   "authors": [ { "name": "David Sherlock", "homepage": "https://arraypress.com/" } ],
   "keywords": ["email", "mailer", "smtp", "postmark", "resend", "ses", "cloudflare", "mime", "transactional"],
   "require": { "php": ">=8.5", "ext-curl": "*", "ext-json": "*" },
   "require-dev": { "phpunit/phpunit": "^13.0" },
-  "autoload": { "psr-4": { "SugarMill\\Mailer\\": "src/" } },
-  "autoload-dev": { "psr-4": { "SugarMill\\Mailer\\Tests\\": "tests/" } },
+  "autoload": { "psr-4": { "Sugar\\Mailer\\": "src/" } },
+  "autoload-dev": { "psr-4": { "Sugar\\Mailer\\Tests\\": "tests/" } },
   "scripts": { "test": "phpunit" },
   "config": { "optimize-autoloader": true, "sort-packages": true, "preferred-install": "dist" },
   "minimum-stability": "stable",
   "prefer-stable": true,
-  "support": { "issues": "https://github.com/sugarmill/mailer/issues", "source": "https://github.com/sugarmill/mailer" }
+  "support": { "issues": "https://github.com/sugarcommerce/mailer/issues", "source": "https://github.com/sugarcommerce/mailer" }
 }

@@ -28,14 +28,14 @@ PHP 8.5+, `ext-curl`, `ext-json`
 ## Installation
 
 ```bash
-composer require sugarmill/mailer
+composer require sugarcommerce/mailer
 ```
 
 ## Usage
 
 ```php
-use SugarMill\Mailer\{Address, Mailer, Message};
-use SugarMill\Mailer\Transports\Postmark;
+use Sugar\Mailer\{Address, Mailer, Message};
+use Sugar\Mailer\Transports\Postmark;
 
 $mailer = new Mailer(
     new Postmark( getenv( 'POSTMARK_TOKEN' ) ),
@@ -144,7 +144,7 @@ Every message goes to that address instead, with the original recipients preserv
 ## Serialising by hand
 
 ```php
-use SugarMill\Mailer\Mime;
+use Sugar\Mailer\Mime;
 
 $raw = Mime::build( $message );
 ```
