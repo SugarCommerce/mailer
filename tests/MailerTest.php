@@ -2,7 +2,7 @@
 /**
  * Mailer test suite.
  *
- * @package   Sugar\Mailer
+ * @package   SugarCommerce\Mailer
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace Sugar\Mailer\Tests;
+namespace SugarCommerce\Mailer\Tests;
 
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -18,14 +18,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
-use Sugar\Mailer\Address;
-use Sugar\Mailer\Attachment;
-use Sugar\Mailer\Mailer;
-use Sugar\Mailer\Message;
-use Sugar\Mailer\Mime;
-use Sugar\Mailer\SendResult;
-use Sugar\Mailer\Transports\Log;
-use Sugar\Mailer\Transports\Memory;
+use SugarCommerce\Mailer\Address;
+use SugarCommerce\Mailer\Attachment;
+use SugarCommerce\Mailer\Mailer;
+use SugarCommerce\Mailer\Message;
+use SugarCommerce\Mailer\Mime;
+use SugarCommerce\Mailer\SendResult;
+use SugarCommerce\Mailer\Transports\Log;
+use SugarCommerce\Mailer\Transports\Memory;
 
 #[CoversClass( Address::class )]
 #[CoversClass( Attachment::class )]

@@ -2,7 +2,7 @@
 /**
  * Log transport.
  *
- * @package   Sugar\Mailer
+ * @package   SugarCommerce\Mailer
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,9 +10,9 @@
 
 declare( strict_types=1 );
 
-namespace Sugar\Mailer\Transports;
+namespace SugarCommerce\Mailer\Transports;
 
-use Sugar\Mailer\{Message, Mime, SendResult, Transport};
+use SugarCommerce\Mailer\{Message, Mime, SendResult, Transport};
 
 /**
  * Class Log

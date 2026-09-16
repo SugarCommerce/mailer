@@ -34,8 +34,8 @@ composer require sugarcommerce/mailer
 ## Usage
 
 ```php
-use Sugar\Mailer\{Address, Mailer, Message};
-use Sugar\Mailer\Transports\Postmark;
+use SugarCommerce\Mailer\{Address, Mailer, Message};
+use SugarCommerce\Mailer\Transports\Postmark;
 
 $mailer = new Mailer(
     new Postmark( getenv( 'POSTMARK_TOKEN' ) ),
@@ -144,7 +144,7 @@ Every message goes to that address instead, with the original recipients preserv
 ## Serialising by hand
 
 ```php
-use Sugar\Mailer\Mime;
+use SugarCommerce\Mailer\Mime;
 
 $raw = Mime::build( $message );
 ```
