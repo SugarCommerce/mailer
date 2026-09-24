@@ -23,7 +23,7 @@ final readonly class Resend implements Transport {
 
 	use Api;
 
-	private const ENDPOINT = 'https://api.resend.com/emails';
+	private const string ENDPOINT = 'https://api.resend.com/emails';
 
 	/**
 	 * @since 1.0.0
@@ -39,6 +39,7 @@ final readonly class Resend implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		$payload = array(
 			'from'    => (string) $message->sender(),
@@ -91,6 +92,7 @@ final readonly class Resend implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'resend';
 	}

@@ -52,6 +52,7 @@ final readonly class Cloudflare implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		$payload = array(
 			'from'    => array( 'email' => $message->sender()?->email, 'name' => $message->sender()?->name ),
@@ -92,6 +93,7 @@ final readonly class Cloudflare implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'cloudflare';
 	}

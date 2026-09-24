@@ -50,6 +50,7 @@ final class Memory implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		if ( ! $this->succeed ) {
 			return SendResult::failed( $this->error, 500, true );
@@ -63,6 +64,7 @@ final class Memory implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'memory';
 	}

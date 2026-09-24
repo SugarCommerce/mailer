@@ -66,6 +66,7 @@ final readonly class Mailer {
 	 *
 	 * @return SendResult
 	 */
+	#[\NoDiscard( 'A failed send is only failed if somebody looks.' )]
 	public function send( Message $message ): SendResult {
 		if ( null !== $this->from && null === $message->sender() ) {
 			$message->from( $this->from );

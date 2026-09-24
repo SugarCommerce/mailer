@@ -42,7 +42,7 @@ final class Mime {
 	 *
 	 * @since 1.0.0
 	 */
-	private const LINE_LENGTH = 76;
+	private const int LINE_LENGTH = 76;
 
 	/**
 	 * Serialise a message.

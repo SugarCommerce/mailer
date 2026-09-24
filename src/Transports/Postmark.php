@@ -27,7 +27,7 @@ final readonly class Postmark implements Transport {
 
 	use Api;
 
-	private const ENDPOINT = 'https://api.postmarkapp.com/email';
+	private const string ENDPOINT = 'https://api.postmarkapp.com/email';
 
 	/**
 	 * @since 1.0.0
@@ -48,6 +48,7 @@ final readonly class Postmark implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		$payload = array(
 			'From'          => (string) $message->sender(),
@@ -111,6 +112,7 @@ final readonly class Postmark implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'postmark';
 	}

@@ -472,7 +472,7 @@ final class MailerTest extends TestCase {
 		$transport = new Memory();
 		$mailer    = new Mailer( $transport, from: new Address( 'noreply@shop.com', 'Shop' ) );
 
-		$mailer->send( Message::to( 'a@b.com' )->subject( 'Hi' )->text( 'Body' ) );
+		(void) $mailer->send( Message::to( 'a@b.com' )->subject( 'Hi' )->text( 'Body' ) );
 
 		$this->assertSame( 'noreply@shop.com', $transport->last()?->sender()?->email );
 	}
@@ -482,7 +482,7 @@ final class MailerTest extends TestCase {
 		$transport = new Memory();
 		$mailer    = new Mailer( $transport, from: new Address( 'noreply@shop.com' ) );
 
-		$mailer->send( Message::to( 'a@b.com' )->from( 'real@shop.com' )->subject( 'Hi' )->text( 'B' ) );
+		(void) $mailer->send( Message::to( 'a@b.com' )->from( 'real@shop.com' )->subject( 'Hi' )->text( 'B' ) );
 
 		$this->assertSame( 'real@shop.com', $transport->last()?->sender()?->email );
 	}
@@ -492,7 +492,7 @@ final class MailerTest extends TestCase {
 		$transport = new Memory();
 		$mailer    = new Mailer( $transport, from: new Address( 'noreply@shop.com' ), reply_to: new Address( 'help@shop.com' ) );
 
-		$mailer->send( Message::to( 'a@b.com' )->subject( 'Hi' )->text( 'B' ) );
+		(void) $mailer->send( Message::to( 'a@b.com' )->subject( 'Hi' )->text( 'B' ) );
 
 		$this->assertSame( 'help@shop.com', $transport->last()?->reply_address()?->email );
 	}
@@ -516,7 +516,7 @@ final class MailerTest extends TestCase {
 		$transport = new Memory();
 		$mailer    = new Mailer( $transport, redirect: 'staging@dev.local' );
 
-		$mailer->send( $this->message() );
+		(void) $mailer->send( $this->message() );
 
 		$last = $transport->last();
 
@@ -531,7 +531,7 @@ final class MailerTest extends TestCase {
 		$transport = new Memory();
 		$mailer    = new Mailer( $transport, redirect: 'staging@dev.local' );
 
-		$mailer->send( $this->message()->attach( new Attachment( 'a.pdf', 'X' ) )->meta( 'order_id', '9' ) );
+		(void) $mailer->send( $this->message()->attach( new Attachment( 'a.pdf', 'X' ) )->meta( 'order_id', '9' ) );
 
 		$this->assertCount( 1, $transport->last()?->attachments() ?? array() );
 		$this->assertSame( array( 'order_id' => '9' ), $transport->last()?->get_metadata() );

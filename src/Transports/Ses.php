@@ -37,7 +37,7 @@ final readonly class Ses implements Transport {
 
 	use Api;
 
-	private const SERVICE = 'ses';
+	private const string SERVICE = 'ses';
 
 	/**
 	 * @since 1.0.0
@@ -61,6 +61,7 @@ final readonly class Ses implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		$payload = array(
 			'Content' => array(
@@ -114,6 +115,7 @@ final readonly class Ses implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'ses';
 	}

@@ -37,6 +37,7 @@ final readonly class Log implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function send( Message $message ): SendResult {
 		$id = bin2hex( random_bytes( 8 ) );
 
@@ -55,6 +56,7 @@ final readonly class Log implements Transport {
 	/**
 	 * {@inheritDoc}
 	 */
+	#[\Override]
 	public function name(): string {
 		return 'log';
 	}
