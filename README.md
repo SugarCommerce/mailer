@@ -18,7 +18,7 @@ Prefer an API transport where one exists. Shared hosts routinely block outbound 
 - 🌍 **RFC 2047 headers** — non-ASCII subjects and sender names fold on character boundaries, not byte boundaries.
 - 📄 **Automatic plain-text part** — derived from the HTML when you don't supply one, keeping link targets.
 - 🔁 **Retryable failures flagged** — a 5xx is worth queueing again, a rejected address never will be.
-- 🧪 **Memory and log transports** — assert against what was sent, or read it on disk.
+- 🧪 **Memory and log transports** — assert against what was sent, or read it on disk, decoded, with `LogReader`.
 - 🛟 **Staging redirect** — divert every message to one inbox so a restored production database can't mail real customers.
 
 ## Requirements
@@ -119,6 +119,21 @@ new Transports\Memory();
 | Log | Writes the full serialised message to a file. Development. |
 | Memory | Collects messages for assertions. Tests. |
 
+### Reading the log back
+
+```php
+use SugarCommerce\Mailer\Transports\LogReader;
+
+foreach ( ( new LogReader( '/tmp/mail.log' ) )->messages( 20 ) as $message ) {
+    $message['subject'];  // decoded from RFC 2047
+    $message['to'];
+    $message['html'];     // quoted-printable undone, so links are whole again
+    $message['text'];
+}
+```
+
+Newest first. For a development outbox page: the log is exact, and nobody wants to read `=3D` through every attribute. Only the end of a large log is read (`max_bytes`, 4 MiB by default), starting at a whole entry, and attachments are never taken for the body.
+
 ### Testing your own code
 
 ```php
@@ -158,7 +173,7 @@ composer install
 composer test
 ```
 
-63 tests. The MIME layer is asserted structurally — part nesting, boundary uniqueness, encoded-word round trips through `mb_decode_mimeheader`, dot-stuffing, and the absence of a single bare LF anywhere in the output.
+70 tests. The MIME layer is asserted structurally — part nesting, boundary uniqueness, encoded-word round trips through `mb_decode_mimeheader`, dot-stuffing, and the absence of a single bare LF anywhere in the output.
 
 ## License
 
