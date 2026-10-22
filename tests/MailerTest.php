@@ -174,6 +174,17 @@ final class MailerTest extends TestCase {
 		Message::to( 'a@b.com' )->header( 'X-Thing', "a\r\nBcc: evil@x.com" );
 	}
 
+	/**
+	 * `$` also matches just before a final newline, so a name ending in one
+	 * passed the token check and split the header it was written into.
+	 */
+	#[Group( 'message' )]
+	public function test_message_rejects_a_header_name_ending_in_a_newline(): void {
+		$this->expectException( InvalidArgumentException::class );
+
+		Message::to( 'a@b.com' )->header( "X-Thing\n", 'value' );
+	}
+
 	#[Group( 'message' )]
 	public function test_message_derives_text_from_html_when_absent(): void {
 		$message = Message::to( 'a@b.com' )->html( '<p>Hello <strong>world</strong></p>' );

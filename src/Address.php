@@ -70,7 +70,7 @@ final readonly class Address {
 	public static function parse( string $value ): self {
 		$value = trim( $value );
 
-		if ( 1 === preg_match( '/^(.*?)\s*<([^>]+)>$/', $value, $m ) ) {
+		if ( 1 === preg_match( '/^(.*?)\s*<([^>]+)>$/D', $value, $m ) ) {
 			return new self( trim( $m[2] ), trim( $m[1], " \t\"" ) );
 		}
 

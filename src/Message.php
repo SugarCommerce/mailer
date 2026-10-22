@@ -327,7 +327,7 @@ final class Message {
 	 *                                   containing a line break.
 	 */
 	public function header( string $name, string $value ): self {
-		if ( 1 !== preg_match( '/^[A-Za-z0-9!#$%&\'*+\-.^_`|~]+$/', $name ) ) {
+		if ( 1 !== preg_match( '/^[A-Za-z0-9!#$%&\'*+\-.^_`|~]+$/D', $name ) ) {
 			throw new \InvalidArgumentException( 'Invalid header name: ' . $name );
 		}
 
