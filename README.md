@@ -105,6 +105,7 @@ new Transports\Ses( $access_key, $secret_key, region: 'eu-west-1' );
 new Transports\Cloudflare( $api_token, $account_id );
 new Transports\Smtp( 'smtp.example.com', 587, $user, $pass );
 new Transports\Smtp( 'smtp.example.com', 465, $user, $pass, implicit_tls: true );
+new Transports\Smtp( '127.0.0.1', 1025, require_tls: false );    // a local catcher like Mailpit only
 new Transports\Log( '/tmp/mail.log' );
 new Transports\Memory();
 ```
@@ -115,8 +116,8 @@ new Transports\Memory();
 | Resend | Tag values must be alphanumeric with dashes and underscores; anything else is sanitised for you. |
 | SES | SigV4 signed directly — no AWS SDK. Sends raw MIME, so attachments and headers pass through unchanged. A new account is sandboxed until you ask for production access. |
 | Cloudflare | Cloudflare Email Service, public beta on Workers Paid. Fine for notifications; for receipts and licence keys, prefer a provider with a longer track record until it reaches GA. |
-| SMTP | The universal fallback. STARTTLS on 587, implicit TLS on 465, `AUTH PLAIN`/`LOGIN`. |
-| Log | Writes the full serialised message to a file. Development. |
+| SMTP | The universal fallback. STARTTLS on 587, implicit TLS on 465, `AUTH PLAIN`/`LOGIN`. TLS 1.2+ with the certificate verified. A server that does not offer STARTTLS is refused (since 1.3.0) rather than sent the password in the clear; pass `require_tls: false` for a local catcher. |
+| Log | Writes the full serialised message to a file, created readable by its owner only. Development. |
 | Memory | Collects messages for assertions. Tests. |
 
 ### Reading the log back
@@ -132,7 +133,7 @@ foreach ( ( new LogReader( '/tmp/mail.log' ) )->messages( 20 ) as $message ) {
 }
 ```
 
-Newest first. For a development outbox page: the log is exact, and nobody wants to read `=3D` through every attribute. Only the end of a large log is read (`max_bytes`, 4 MiB by default), starting at a whole entry, and attachments are never taken for the body.
+The `html` is the message as sent, customer-typed content and all: show it in a sandboxed iframe and escape every header, never echo it into an admin page. Newest first. For a development outbox page: the log is exact, and nobody wants to read `=3D` through every attribute. Only the end of a large log is read (`max_bytes`, 4 MiB by default), starting at a whole entry, and attachments are never taken for the body.
 
 ### Testing your own code
 

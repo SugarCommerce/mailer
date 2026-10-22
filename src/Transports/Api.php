@@ -44,14 +44,27 @@ trait Api {
 		$lines = array( 'Content-Type: application/json', 'Accept: application/json' );
 
 		foreach ( $headers as $name => $value ) {
+			// The values are API keys from configuration. A stray newline
+			// pasted in with one would start a second header — refused
+			// rather than sent, and without echoing the key.
+			if ( 1 === preg_match( '/[\r\n\x00]/', $name . $value ) ) {
+				return array( 'status' => 0, 'body' => '', 'error' => 'A request header for the mail provider contains a line break; check the configured credentials.' );
+			}
+
 			$lines[] = $name . ': ' . $value;
+		}
+
+		$json = self::json( $payload );
+
+		if ( false === $json ) {
+			return array( 'status' => 0, 'body' => '', 'error' => 'The message could not be encoded for the mail provider.' );
 		}
 
 		$handle = curl_init( $url );
 
 		curl_setopt_array( $handle, array(
 			CURLOPT_POST           => true,
-			CURLOPT_POSTFIELDS     => json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ),
+			CURLOPT_POSTFIELDS     => $json,
 			CURLOPT_HTTPHEADER     => $lines,
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_TIMEOUT        => $timeout,
@@ -74,6 +87,53 @@ trait Api {
 			'body'   => is_string( $body ) ? $body : '',
 			'error'  => $error,
 		);
+	}
+
+	/**
+	 * A payload as the JSON that is sent.
+	 *
+	 * Invalid UTF-8 (a name pasted from a Latin-1 source, say) is replaced
+	 * rather than allowed to fail the whole encode. SES signs this exact
+	 * string, so it and post() must encode identically.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param array<string, mixed> $payload Request body.
+	 *
+	 * @return string|false False only when the payload cannot be encoded
+	 *                      at all.
+	 */
+	private static function json( array $payload ): string|false {
+		return json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE );
+	}
+
+	/**
+	 * A provider's value as text.
+	 *
+	 * Providers disagree on shape: an id is a string or a number, and an
+	 * error is a string, an object with a `message`, or (Cloudflare) a
+	 * list of those. Anything else reads as empty.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param mixed $value Decoded JSON value.
+	 *
+	 * @return string
+	 */
+	private static function text( mixed $value ): string {
+		if ( is_string( $value ) || is_int( $value ) || is_float( $value ) ) {
+			return (string) $value;
+		}
+
+		if ( ! is_array( $value ) ) {
+			return '';
+		}
+
+		if ( array_key_exists( 'message', $value ) ) {
+			return self::text( $value['message'] );
+		}
+
+		return implode( '; ', array_filter( array_map( self::text( ... ), array_values( $value ) ), static fn( string $text ): bool => '' !== $text ) );
 	}
 
 	/**
@@ -101,10 +161,10 @@ trait Api {
 		$decoded = is_array( $decoded ) ? $decoded : array();
 
 		if ( $response['status'] >= 200 && $response['status'] < 300 ) {
-			return SendResult::ok( (string) ( $decoded[ $id_key ] ?? $decoded['id'] ?? '' ), $response['status'] );
+			return SendResult::ok( self::text( $decoded[ $id_key ] ?? $decoded['id'] ?? '' ), $response['status'] );
 		}
 
-		$message = (string) ( $decoded[ $error_key ] ?? $decoded['message'] ?? $decoded['error'] ?? '' );
+		$message = self::text( $decoded[ $error_key ] ?? $decoded['message'] ?? $decoded['error'] ?? '' );
 
 		if ( '' === $message ) {
 			$message = 'HTTP ' . $response['status'];

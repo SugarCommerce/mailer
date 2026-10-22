@@ -37,6 +37,8 @@ namespace SugarCommerce\Mailer;
 final readonly class Mailer {
 
 	/**
+	 * Wrap a transport.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param Transport    $transport Delivery mechanism.
@@ -65,6 +67,9 @@ final readonly class Mailer {
 	 * @param Message $message Message.
 	 *
 	 * @return SendResult
+	 *
+	 * @throws \InvalidArgumentException When the configured redirect is
+	 *                                   not a valid address.
 	 */
 	#[\NoDiscard( 'A failed send is only failed if somebody looks.' )]
 	public function send( Message $message ): SendResult {
@@ -113,6 +118,9 @@ final readonly class Mailer {
 	 * @param Message $message Original.
 	 *
 	 * @return Message
+	 *
+	 * @throws \InvalidArgumentException When the redirect is not a valid
+	 *                                   address.
 	 */
 	private function redirected( Message $message ): Message {
 		$original = implode( ', ', array_map( static fn( Address $a ): string => $a->email, $message->recipients() ) );

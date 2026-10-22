@@ -32,6 +32,12 @@ namespace SugarCommerce\Mailer\Transports;
  * appended to for as long as a box runs and the newest messages are the
  * ones anybody wants.
  *
+ * The decoded `html` is the message exactly as it was sent, and a message
+ * carries whatever a customer typed into it. Show it in a sandboxed iframe
+ * (`<iframe sandbox srcdoc="...">`, escaped for the attribute), never
+ * inline in an admin page, or a name field becomes script on that page.
+ * The same goes for every header value: escape it.
+ *
  * @since 1.2.0
  */
 final readonly class LogReader {
@@ -44,10 +50,13 @@ final readonly class LogReader {
 	private const string RULE = '========================================================================';
 
 	/**
+	 * Point the reader at a log.
+	 *
 	 * @since 1.2.0
 	 *
 	 * @param string $path      The file Log appends to.
-	 * @param int    $max_bytes Most of the file's end to read.
+	 * @param int    $max_bytes Most of the file's end to read. Values
+	 *                          below 1 read nothing.
 	 */
 	public function __construct(
 		private string $path,
@@ -74,7 +83,8 @@ final readonly class LogReader {
 	 *
 	 * @param string $id The id Log returned as the message id.
 	 *
-	 * @return array|null As messages() returns them.
+	 * @return array{id: string, logged: string, subject: string, from: string, to: string, date: string, headers: array<string, string>, html: string, text: string}|null
+	 *         As messages() returns them.
 	 */
 	public function find( string $id ): ?array {
 		foreach ( self::parse( $this->tail() ) as $message ) {
@@ -150,7 +160,7 @@ final readonly class LogReader {
 	private function tail(): string {
 		$size = is_file( $this->path ) ? (int) filesize( $this->path ) : 0;
 
-		if ( $size <= 0 ) {
+		if ( $size <= 0 || $this->max_bytes < 1 ) {
 			return '';
 		}
 

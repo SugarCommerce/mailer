@@ -12,7 +12,7 @@ declare( strict_types=1 );
 
 namespace SugarCommerce\Mailer\Transports;
 
-use SugarCommerce\Mailer\{Message, Mime, SendResult, Transport};
+use SugarCommerce\Mailer\{Address, Message, Mime, SendResult, Transport};
 
 /**
  * Class Ses
@@ -37,10 +37,25 @@ final readonly class Ses implements Transport {
 
 	use Api;
 
+	/**
+	 * The service name in the SigV4 scope.
+	 *
+	 * @since 1.0.0
+	 */
 	private const string SERVICE = 'ses';
 
 	/**
+	 * What a region looks like: `eu-west-1`, `us-gov-west-1`.
+	 *
+	 * @since 1.3.0
+	 */
+	private const string REGION = '/^[a-z]{2}(?:-[a-z]+)+-[0-9]+$/D';
+
+	/**
+	 * Configure the transport.
+	 *
 	 * @since 1.0.0
+	 * @since 1.3.0 Throws for a region that is not one.
 	 *
 	 * @param string $access_key    AWS access key id.
 	 * @param string $secret_key    AWS secret access key.
@@ -49,6 +64,8 @@ final readonly class Ses implements Transport {
 	 *                                  is how you get open/bounce events
 	 *                                  routed to SNS.
 	 * @param int    $timeout       Seconds.
+	 *
+	 * @throws \InvalidArgumentException When the region is not a region.
 	 */
 	public function __construct(
 		#[\SensitiveParameter] private string $access_key,
@@ -56,7 +73,31 @@ final readonly class Ses implements Transport {
 		private string $region = 'us-east-1',
 		private string $configuration_set = '',
 		private int $timeout = 15,
-	) {}
+	) {
+		// The region becomes part of the hostname the signed request is
+		// sent to. `evil.example/x?` would send it, and the access key id
+		// with it, somewhere other than AWS.
+		if ( 1 !== preg_match( self::REGION, $region ) ) {
+			throw new \InvalidArgumentException( 'Not an AWS region: ' . $region );
+		}
+	}
+
+	/**
+	 * What var_dump() and print_r() show: the settings, never the keys.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return array<string, string|int>
+	 */
+	public function __debugInfo(): array {
+		return array(
+			'access_key'        => '[redacted]',
+			'secret_key'        => '[redacted]',
+			'region'            => $this->region,
+			'configuration_set' => $this->configuration_set,
+			'timeout'           => $this->timeout,
+		);
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -72,11 +113,11 @@ final readonly class Ses implements Transport {
 		// Bcc lives in the envelope only, so it has to be named here —
 		// SES reads the destination from this list, not from the headers.
 		$destinations = array_map(
-			static fn( $a ): string => $a->email,
+			static fn( Address $a ): string => $a->email,
 			array_merge( $message->recipients(), $message->cc_recipients(), $message->bcc_recipients() )
 		);
 
-		$payload['Destination'] = array( 'ToAddresses' => array_values( $destinations ) );
+		$payload['Destination'] = array( 'ToAddresses' => $destinations );
 
 		if ( null !== $message->sender() ) {
 			$payload['FromEmailAddress'] = $message->sender()->header();
@@ -94,7 +135,7 @@ final readonly class Ses implements Transport {
 
 		$host = 'email.' . $this->region . '.amazonaws.com';
 		$path = '/v2/email/outbound-emails';
-		$body = json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$body = self::json( $payload );
 
 		if ( false === $body ) {
 			return SendResult::failed( 'The message could not be encoded for SES.' );

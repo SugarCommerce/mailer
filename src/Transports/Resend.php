@@ -23,9 +23,16 @@ final readonly class Resend implements Transport {
 
 	use Api;
 
+	/**
+	 * The send endpoint.
+	 *
+	 * @since 1.0.0
+	 */
 	private const string ENDPOINT = 'https://api.resend.com/emails';
 
 	/**
+	 * Configure the transport.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $api_key API key.
@@ -35,6 +42,20 @@ final readonly class Resend implements Transport {
 		#[\SensitiveParameter] private string $api_key,
 		private int $timeout = 15,
 	) {}
+
+	/**
+	 * What var_dump() and print_r() show: the settings, never the key.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return array<string, string|int>
+	 */
+	public function __debugInfo(): array {
+		return array(
+			'api_key' => '[redacted]',
+			'timeout' => $this->timeout,
+		);
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -102,9 +123,9 @@ final readonly class Resend implements Transport {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Address[] $addresses Addresses.
+	 * @param list<Address> $addresses Addresses.
 	 *
-	 * @return string[]
+	 * @return list<string>
 	 */
 	private static function emails( array $addresses ): array {
 		return array_map( static fn( Address $a ): string => $a->header(), $addresses );

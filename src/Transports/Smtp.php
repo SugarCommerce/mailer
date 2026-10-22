@@ -32,20 +32,52 @@ use SugarCommerce\Mailer\{Address, Message, Mime, SendResult, Transport};
 final readonly class Smtp implements Transport {
 
 	/**
-	 * @since 1.0.0
+	 * Most bytes one server reply may run to.
 	 *
-	 * @param string $host      Server hostname.
-	 * @param int    $port      587 for STARTTLS, 465 for implicit TLS.
-	 * @param string $username  Auth username.
-	 * @param string $password  Auth password.
+	 * A real EHLO reply is a few hundred bytes. A server that keeps
+	 * sending continuation lines is not a mail server, and reading it to
+	 * the end would hold the worker until memory ran out.
+	 *
+	 * @since 1.3.0
+	 */
+	private const int MAX_REPLY = 65_536;
+
+	/**
+	 * TLS versions accepted, for both implicit TLS and STARTTLS.
+	 *
+	 * 1.2 and 1.3 only: PHP's generic TLS client constant still admits
+	 * 1.0 and 1.1 on some builds.
+	 *
+	 * @since 1.3.0
+	 */
+	private const int CRYPTO = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+
+	/**
+	 * Configure the connection.
+	 *
+	 * @since 1.0.0
+	 * @since 1.3.0 Added `$require_tls`, on by default.
+	 *
+	 * @param string $host         Server hostname.
+	 * @param int    $port         587 for STARTTLS, 465 for implicit TLS.
+	 * @param string $username     Auth username.
+	 * @param string $password     Auth password.
 	 * @param bool   $implicit_tls Wrap the socket in TLS from the start,
 	 *                             as port 465 requires. Port 587 upgrades
 	 *                             with STARTTLS instead.
-	 * @param int    $timeout   Seconds.
-	 * @param bool   $verify_peer Verify the server certificate. Turning
-	 *                            this off makes the connection
-	 *                            interceptable and is never right in
-	 *                            production.
+	 * @param int    $timeout      Seconds.
+	 * @param bool   $verify_peer  Verify the server certificate. Turning
+	 *                             this off makes the connection
+	 *                             interceptable and is never right in
+	 *                             production.
+	 * @param bool   $require_tls  Refuse to continue when a server reached
+	 *                             without implicit TLS does not offer
+	 *                             STARTTLS. Anyone on the path can strip
+	 *                             the STARTTLS line from the reply, and
+	 *                             without this the password and the
+	 *                             message would then go in the clear.
+	 *                             Turn it off only for a local catcher
+	 *                             such as Mailpit.
 	 */
 	public function __construct(
 		private string $host,
@@ -55,7 +87,29 @@ final readonly class Smtp implements Transport {
 		private bool $implicit_tls = false,
 		private int $timeout = 15,
 		private bool $verify_peer = true,
+		private bool $require_tls = true,
 	) {}
+
+	/**
+	 * What var_dump() and print_r() show: the settings, never the
+	 * credentials.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return array<string, string|int|bool>
+	 */
+	public function __debugInfo(): array {
+		return array(
+			'host'         => $this->host,
+			'port'         => $this->port,
+			'username'     => '' === $this->username ? '' : '[redacted]',
+			'password'     => '' === $this->password ? '' : '[redacted]',
+			'implicit_tls' => $this->implicit_tls,
+			'timeout'      => $this->timeout,
+			'verify_peer'  => $this->verify_peer,
+			'require_tls'  => $this->require_tls,
+		);
+	}
 
 	/**
 	 * {@inheritDoc}
@@ -66,7 +120,10 @@ final readonly class Smtp implements Transport {
 			'ssl' => array(
 				'verify_peer'       => $this->verify_peer,
 				'verify_peer_name'  => $this->verify_peer,
+				'allow_self_signed' => false,
+				'peer_name'         => $this->host,
 				'SNI_enabled'       => true,
+				'crypto_method'     => self::CRYPTO,
 			),
 		) );
 
@@ -127,20 +184,33 @@ final readonly class Smtp implements Transport {
 		$domain = $message->sender()?->domain() ?: 'localhost';
 
 		$this->command( $socket, 'EHLO ' . $domain );
-		$capabilities = $this->expect( $socket, 250 );
+		$capabilities = self::capabilities( $this->expect( $socket, 250 ) );
 
-		if ( ! $this->implicit_tls && str_contains( strtoupper( $capabilities ), 'STARTTLS' ) ) {
-			$this->command( $socket, 'STARTTLS' );
-			$this->expect( $socket, 220 );
+		if ( ! $this->implicit_tls ) {
+			if ( isset( $capabilities['STARTTLS'] ) ) {
+				$this->command( $socket, 'STARTTLS' );
+				$this->expect( $socket, 220 );
 
-			if ( ! @stream_socket_enable_crypto( $socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT ) ) {
-				throw new \RuntimeException( 'Could not negotiate TLS with ' . $this->host . '.' );
+				// Anything already waiting arrived before the handshake, in
+				// the clear, and would be read afterwards as if the server
+				// had sent it over TLS: the STARTTLS response injection
+				// attack. A real server says nothing until we do.
+				if ( self::pending( $socket ) ) {
+					throw new \RuntimeException( 'The mail server sent data before the TLS handshake; refusing to continue.' );
+				}
+
+				if ( true !== @stream_socket_enable_crypto( $socket, true, self::CRYPTO ) ) {
+					throw new \RuntimeException( 'Could not negotiate TLS with ' . $this->host . '.' );
+				}
+
+				// The capability list must be re-read after the upgrade: a
+				// server may only advertise AUTH once the channel is secure,
+				// and nothing said before it can be trusted.
+				$this->command( $socket, 'EHLO ' . $domain );
+				$capabilities = self::capabilities( $this->expect( $socket, 250 ) );
+			} elseif ( $this->require_tls ) {
+				throw new \RuntimeException( $this->host . ' does not offer STARTTLS; refusing to send credentials or mail in the clear.' );
 			}
-
-			// The capability list must be re-read after the upgrade: a
-			// server may only advertise AUTH once the channel is secure.
-			$this->command( $socket, 'EHLO ' . $domain );
-			$capabilities = $this->expect( $socket, 250 );
 		}
 
 		if ( '' !== $this->username ) {
@@ -177,24 +247,26 @@ final readonly class Smtp implements Transport {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param resource $socket       Open socket.
-	 * @param string   $capabilities EHLO response.
+	 * @param resource              $socket       Open socket.
+	 * @param array<string, string> $capabilities EHLO keywords, as
+	 *                                            capabilities() returns
+	 *                                            them.
 	 *
 	 * @return void
 	 *
 	 * @throws \RuntimeException When authentication fails.
 	 */
-	private function authenticate( $socket, string $capabilities ): void {
-		$upper = strtoupper( $capabilities );
+	private function authenticate( $socket, array $capabilities ): void {
+		$mechanisms = explode( ' ', $capabilities['AUTH'] ?? '' );
 
-		if ( str_contains( $upper, 'PLAIN' ) ) {
+		if ( in_array( 'PLAIN', $mechanisms, true ) ) {
 			$this->command( $socket, 'AUTH PLAIN ' . base64_encode( "\0" . $this->username . "\0" . $this->password ) );
 			$this->expect( $socket, 235 );
 
 			return;
 		}
 
-		if ( str_contains( $upper, 'LOGIN' ) ) {
+		if ( in_array( 'LOGIN', $mechanisms, true ) ) {
 			$this->command( $socket, 'AUTH LOGIN' );
 			$this->expect( $socket, 334 );
 
@@ -208,6 +280,61 @@ final readonly class Smtp implements Transport {
 		}
 
 		throw new \RuntimeException( 'The server advertises no supported authentication mechanism.' );
+	}
+
+	/**
+	 * The keywords an EHLO reply advertises.
+	 *
+	 * Read line by line rather than searched as text, so a greeting that
+	 * merely mentions a keyword (a host called `starttls.example.com`)
+	 * is not taken for the server offering it.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $reply The full EHLO reply.
+	 *
+	 * @return array<string, string> Upper-cased keyword => its parameters,
+	 *                               e.g. `AUTH` => `PLAIN LOGIN`.
+	 */
+	private static function capabilities( string $reply ): array {
+		$capabilities = array();
+		$lines        = preg_split( '/\r?\n/', trim( $reply ) ) ?: array();
+
+		// The first line is the server's greeting, not a keyword.
+		foreach ( array_slice( $lines, 1 ) as $line ) {
+			$words = preg_split( '/[ \t]+/', strtoupper( trim( substr( $line, 4 ) ) ) ) ?: array();
+			$key   = (string) array_shift( $words );
+
+			if ( '' !== $key ) {
+				$capabilities[ $key ] = implode( ' ', $words );
+			}
+		}
+
+		return $capabilities;
+	}
+
+	/**
+	 * Whether the server has sent bytes nobody has asked for yet.
+	 *
+	 * Checks PHP's own read buffer and then the socket itself, without
+	 * waiting.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param resource $socket Open socket.
+	 *
+	 * @return bool
+	 */
+	private static function pending( $socket ): bool {
+		if ( stream_get_meta_data( $socket )['unread_bytes'] > 0 ) {
+			return true;
+		}
+
+		$read   = array( $socket );
+		$write  = null;
+		$except = null;
+
+		return 0 < (int) @stream_select( $read, $write, $except, 0 );
 	}
 
 	/**
@@ -249,20 +376,21 @@ final readonly class Smtp implements Transport {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param resource  $socket   Open socket.
-	 * @param int|int[] $expected Acceptable codes.
+	 * @param resource       $socket   Open socket.
+	 * @param int|array<int> $expected Acceptable codes.
 	 *
 	 * @return string The full reply.
 	 *
-	 * @throws \RuntimeException On an unexpected code or a timeout.
+	 * @throws \RuntimeException On an unexpected code, a timeout, or a
+	 *                           reply longer than MAX_REPLY.
 	 */
 	private function expect( $socket, int|array $expected ): string {
 		$expected = (array) $expected;
 		$reply    = '';
 
 		// A multi-line reply marks continuations with "250-" and the last
-		// line with "250 ". Stopping at the first line loses the
-		// capability list.
+		// line with "250 " (or a bare "250"). Stopping at the first line
+		// loses the capability list.
 		while ( true ) {
 			$line = @fgets( $socket, 1024 );
 
@@ -272,7 +400,11 @@ final readonly class Smtp implements Transport {
 
 			$reply .= $line;
 
-			if ( 1 === preg_match( '/^\d{3} /', $line ) ) {
+			if ( strlen( $reply ) > self::MAX_REPLY ) {
+				throw new \RuntimeException( 'The mail server sent a reply too long to be one.' );
+			}
+
+			if ( 1 === preg_match( '/^\d{3}(?:[ \r\n]|$)/', $line ) ) {
 				break;
 			}
 		}

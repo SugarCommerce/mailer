@@ -24,6 +24,8 @@ namespace SugarCommerce\Mailer;
 final readonly class SendResult {
 
 	/**
+	 * Record an outcome. The named constructors read better.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param bool   $sent       Whether the provider accepted it.

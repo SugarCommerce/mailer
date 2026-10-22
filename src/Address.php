@@ -20,13 +20,16 @@ namespace SugarCommerce\Mailer;
 final readonly class Address {
 
 	/**
+	 * Validate and hold an address.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $email Address.
 	 * @param string $name  Display name.
 	 *
 	 * @throws \InvalidArgumentException When the address is not valid or
-	 *                                   contains a line break.
+	 *                                   contains a line break or another
+	 *                                   control character.
 	 */
 	public function __construct(
 		public string $email,
@@ -37,6 +40,15 @@ final readonly class Address {
 		// stripped, so a mangled address never reaches a transport.
 		if ( 1 === preg_match( '/[\r\n\x00]/', $email . $name ) ) {
 			throw new \InvalidArgumentException( 'Email addresses and names cannot contain line breaks.' );
+		}
+
+		// FILTER_VALIDATE_EMAIL lets a quoted local part carry control
+		// characters ("a\x0Bb"@example.com). They have no business in an
+		// SMTP envelope or a header, where a server may read them as
+		// separators, so they are refused here too. A tab is allowed in a
+		// name only, where it is ordinary whitespace.
+		if ( 1 === preg_match( '/[\x00-\x1F\x7F]/', $email ) || 1 === preg_match( '/[\x00-\x08\x0A-\x1F\x7F]/', $name ) ) {
+			throw new \InvalidArgumentException( 'Email addresses and names cannot contain control characters.' );
 		}
 
 		if ( false === filter_var( $email, FILTER_VALIDATE_EMAIL ) ) {
@@ -70,9 +82,14 @@ final readonly class Address {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param self|string|array{0: string, 1?: string} $value Address.
+	 * @param self|string|array{0?: string, 1?: string} $value Address, as an
+	 *                                                       object, a string
+	 *                                                       for parse(), or
+	 *                                                       `[ email, name ]`.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the value is not a valid address.
 	 */
 	public static function from( self|string|array $value ): self {
 		return match ( true ) {

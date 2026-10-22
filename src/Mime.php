@@ -49,9 +49,10 @@ final class Mime {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Message  $message  Message.
-	 * @param callable $boundary Boundary generator, for deterministic
-	 *                           output in tests.
+	 * @param Message                    $message  Message.
+	 * @param (callable(): string)|null  $boundary Boundary generator, for
+	 *                                             deterministic output in
+	 *                                             tests.
 	 *
 	 * @return string Headers and body, CRLF-delimited.
 	 */
@@ -111,8 +112,8 @@ final class Mime {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Message  $message  Message.
-	 * @param callable $boundary Boundary generator.
+	 * @param Message            $message  Message.
+	 * @param callable(): string $boundary Boundary generator.
 	 *
 	 * @return array{headers: array<string, string>, body: string}
 	 */
@@ -244,11 +245,12 @@ final class Mime {
 	 */
 	private static function attachment_part( Attachment $attachment ): string {
 		$disposition = $attachment->is_inline() ? 'inline' : 'attachment';
+		$filename    = self::quoted( $attachment->filename );
 
 		$headers = array(
-			'Content-Type'              => $attachment->mime_type . '; name="' . self::encode_header( $attachment->filename ) . '"',
+			'Content-Type'              => $attachment->mime_type . '; name=' . $filename,
 			'Content-Transfer-Encoding' => 'base64',
-			'Content-Disposition'       => $disposition . '; filename="' . self::encode_header( $attachment->filename ) . '"',
+			'Content-Disposition'       => $disposition . '; filename=' . $filename,
 		);
 
 		if ( $attachment->is_inline() ) {
@@ -256,6 +258,23 @@ final class Mime {
 		}
 
 		return self::render( $headers ) . "\r\n" . chunk_split( $attachment->encoded(), self::LINE_LENGTH, "\r\n" );
+	}
+
+	/**
+	 * A parameter value as a quoted string.
+	 *
+	 * A quote or backslash in a filename would otherwise end the string
+	 * early, and whatever followed would be read as further parameters.
+	 * Non-ASCII is wrapped in encoded-words first, which contain neither.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $value Raw value.
+	 *
+	 * @return string The value, quoted.
+	 */
+	private static function quoted( string $value ): string {
+		return '"' . str_replace( array( '\\', '"' ), array( '\\\\', '\\"' ), self::encode_header( $value ) ) . '"';
 	}
 
 	/**
@@ -404,6 +423,12 @@ final class Mime {
 	 * legitimately starts with one has to be doubled — otherwise a
 	 * message can truncate itself mid-body.
 	 *
+	 * Every line ending is made CRLF first. A bare LF or CR is where SMTP
+	 * smuggling lives: `\n.\r\n` is not an end of data to this code, but
+	 * some servers read it as one, and whatever follows it becomes a
+	 * second message — with its own MAIL FROM — sent on our credentials.
+	 * Mime::build() never writes a bare one; this holds for any input.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $data Serialised message.
@@ -411,6 +436,8 @@ final class Mime {
 	 * @return string
 	 */
 	public static function dot_stuff( string $data ): string {
+		$data = str_replace( array( "\r\n", "\r", "\n" ), array( "\n", "\n", "\r\n" ), $data );
+
 		if ( str_starts_with( $data, '.' ) ) {
 			$data = '.' . $data;
 		}

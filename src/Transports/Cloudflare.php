@@ -37,6 +37,8 @@ final readonly class Cloudflare implements Transport {
 	use Api;
 
 	/**
+	 * Configure the transport.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $api_token  API token with email send permission.
@@ -48,6 +50,21 @@ final readonly class Cloudflare implements Transport {
 		private string $account_id,
 		private int $timeout = 15,
 	) {}
+
+	/**
+	 * What var_dump() and print_r() show: the settings, never the token.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return array<string, string|int>
+	 */
+	public function __debugInfo(): array {
+		return array(
+			'api_token'  => '[redacted]',
+			'account_id' => $this->account_id,
+			'timeout'    => $this->timeout,
+		);
+	}
 
 	/**
 	 * {@inheritDoc}

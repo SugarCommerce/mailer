@@ -31,11 +31,13 @@ final class Memory implements Transport {
 	/**
 	 * Messages accepted so far.
 	 *
-	 * @var Message[]
+	 * @var list<Message>
 	 */
 	private array $sent = array();
 
 	/**
+	 * Configure how sends behave.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param bool   $succeed Whether sends report success. Set false to
@@ -74,7 +76,7 @@ final class Memory implements Transport {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return Message[]
+	 * @return list<Message>
 	 */
 	public function messages(): array {
 		return $this->sent;

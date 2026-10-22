@@ -27,9 +27,16 @@ final readonly class Postmark implements Transport {
 
 	use Api;
 
+	/**
+	 * The send endpoint.
+	 *
+	 * @since 1.0.0
+	 */
 	private const string ENDPOINT = 'https://api.postmarkapp.com/email';
 
 	/**
+	 * Configure the transport.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $token   Server API token.
@@ -44,6 +51,21 @@ final readonly class Postmark implements Transport {
 		private string $stream = 'outbound',
 		private int $timeout = 15,
 	) {}
+
+	/**
+	 * What var_dump() and print_r() show: the settings, never the token.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @return array<string, string|int>
+	 */
+	public function __debugInfo(): array {
+		return array(
+			'token'   => '[redacted]',
+			'stream'  => $this->stream,
+			'timeout' => $this->timeout,
+		);
+	}
 
 	/**
 	 * {@inheritDoc}

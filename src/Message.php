@@ -37,34 +37,88 @@ namespace SugarCommerce\Mailer;
  */
 final class Message {
 
-	/** @var Address[] */
+	/**
+	 * Primary recipients.
+	 *
+	 * @var list<Address>
+	 */
 	private array $to = array();
 
-	/** @var Address[] */
+	/**
+	 * Carbon-copy recipients.
+	 *
+	 * @var list<Address>
+	 */
 	private array $cc = array();
 
-	/** @var Address[] */
+	/**
+	 * Blind-copy recipients: envelope only, never written as a header.
+	 *
+	 * @var list<Address>
+	 */
 	private array $bcc = array();
 
+	/**
+	 * The sender, or null until one is set.
+	 *
+	 * @var Address|null
+	 */
 	private ?Address $from = null;
 
+	/**
+	 * Where replies go, or null for the sender.
+	 *
+	 * @var Address|null
+	 */
 	private ?Address $reply_to = null;
 
+	/**
+	 * The subject line, never containing a line break.
+	 *
+	 * @var string
+	 */
 	private string $subject = '';
 
+	/**
+	 * The HTML body.
+	 *
+	 * @var string
+	 */
 	private string $html = '';
 
+	/**
+	 * The plain-text body, or empty to derive one from the HTML.
+	 *
+	 * @var string
+	 */
 	private string $text = '';
 
-	/** @var Attachment[] */
+	/**
+	 * Files and inline images.
+	 *
+	 * @var list<Attachment>
+	 */
 	private array $attachments = array();
 
-	/** @var array<string, string> */
+	/**
+	 * Custom headers, by name.
+	 *
+	 * @var array<string, string>
+	 */
 	private array $headers = array();
 
-	/** @var array<string, string> */
+	/**
+	 * Provider metadata, echoed back on webhooks.
+	 *
+	 * @var array<string, string>
+	 */
 	private array $metadata = array();
 
+	/**
+	 * Provider reporting tag.
+	 *
+	 * @var string
+	 */
 	private string $tag = '';
 
 	/**
@@ -75,6 +129,9 @@ final class Message {
 	 * @param Address|string|array<int, Address|string> $to Recipients.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When a recipient is not a valid
+	 *                                   address.
 	 */
 	public static function to( Address|string|array $to ): self {
 		$message = new self();
@@ -97,6 +154,8 @@ final class Message {
 	 * @param string         $name    Display name.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the address is not valid.
 	 */
 	public function add_to( Address|string $address, string $name = '' ): self {
 		$this->to[] = '' !== $name && is_string( $address ) ? new Address( $address, $name ) : Address::from( $address );
@@ -113,6 +172,8 @@ final class Message {
 	 * @param string         $name    Display name.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the address is not valid.
 	 */
 	public function cc( Address|string $address, string $name = '' ): self {
 		$this->cc[] = '' !== $name && is_string( $address ) ? new Address( $address, $name ) : Address::from( $address );
@@ -129,6 +190,8 @@ final class Message {
 	 * @param string         $name    Display name.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the address is not valid.
 	 */
 	public function bcc( Address|string $address, string $name = '' ): self {
 		$this->bcc[] = '' !== $name && is_string( $address ) ? new Address( $address, $name ) : Address::from( $address );
@@ -145,6 +208,8 @@ final class Message {
 	 * @param string         $name    Display name.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the address is not valid.
 	 */
 	public function from( Address|string $address, string $name = '' ): self {
 		$this->from = '' !== $name && is_string( $address ) ? new Address( $address, $name ) : Address::from( $address );
@@ -165,6 +230,8 @@ final class Message {
 	 * @param string         $name    Display name.
 	 *
 	 * @return self
+	 *
+	 * @throws \InvalidArgumentException When the address is not valid.
 	 */
 	public function reply_to( Address|string $address, string $name = '' ): self {
 		$this->reply_to = '' !== $name && is_string( $address ) ? new Address( $address, $name ) : Address::from( $address );
@@ -310,33 +377,79 @@ final class Message {
 
 	/* ─── Reading ───────────────────────────────────────────────────── */
 
-	/** @return Address[] */
+	/**
+	 * The primary recipients.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return list<Address>
+	 */
 	public function recipients(): array {
 		return $this->to;
 	}
 
-	/** @return Address[] */
+	/**
+	 * The carbon-copy recipients.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return list<Address>
+	 */
 	public function cc_recipients(): array {
 		return $this->cc;
 	}
 
-	/** @return Address[] */
+	/**
+	 * The blind-copy recipients.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return list<Address>
+	 */
 	public function bcc_recipients(): array {
 		return $this->bcc;
 	}
 
+	/**
+	 * The sender.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return Address|null Null until one is set.
+	 */
 	public function sender(): ?Address {
 		return $this->from;
 	}
 
+	/**
+	 * The reply-to address.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return Address|null Null when replies go to the sender.
+	 */
 	public function reply_address(): ?Address {
 		return $this->reply_to;
 	}
 
+	/**
+	 * The subject line.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
 	public function get_subject(): string {
 		return $this->subject;
 	}
 
+	/**
+	 * The HTML body.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string
+	 */
 	public function get_html(): string {
 		return $this->html;
 	}
@@ -373,21 +486,46 @@ final class Message {
 		return trim( $text );
 	}
 
-	/** @return Attachment[] */
+	/**
+	 * The attachments, files and inline images alike.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return list<Attachment>
+	 */
 	public function attachments(): array {
 		return $this->attachments;
 	}
 
-	/** @return array<string, string> */
+	/**
+	 * The custom headers.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array<string, string> Name => value.
+	 */
 	public function custom_headers(): array {
 		return $this->headers;
 	}
 
-	/** @return array<string, string> */
+	/**
+	 * The provider metadata.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array<string, string> Key => value.
+	 */
 	public function get_metadata(): array {
 		return $this->metadata;
 	}
 
+	/**
+	 * The reporting tag.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string Empty when untagged.
+	 */
 	public function get_tag(): string {
 		return $this->tag;
 	}
@@ -397,7 +535,7 @@ final class Message {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @return string[] Empty when ready.
+	 * @return list<string> Empty when ready.
 	 */
 	public function problems(): array {
 		$problems = array();
