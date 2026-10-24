@@ -1,6 +1,6 @@
 {
   "name": "sugarcommerce/mailer",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Transactional email for self-hosted PHP. One Message, many transports: Postmark, Resend, Amazon SES, Cloudflare Email, SMTP, plus log and in-memory for development. Full MIME serialisation with inline images, attachments and RFC 2047 headers. Header-injection safe. Zero dependencies.",
   "type": "library",
   "license": "GPL-2.0-or-later",

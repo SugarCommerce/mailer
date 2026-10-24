@@ -18,7 +18,7 @@ Prefer an API transport where one exists. Shared hosts routinely block outbound 
 - 🌍 **RFC 2047 headers** — non-ASCII subjects and sender names fold on character boundaries, not byte boundaries.
 - 📄 **Automatic plain-text part** — derived from the HTML when you don't supply one, keeping link targets.
 - 🔁 **Retryable failures flagged** — a 5xx is worth queueing again, a rejected address never will be.
-- 🧪 **Memory and log transports** — assert against what was sent, or read it on disk, decoded, with `LogReader`.
+- 🧪 **Memory and log transports** — assert against what was sent, or read it on disk, decoded, with `LogReader`, or as a page with `LogViewer`.
 - 🛟 **Staging redirect** — divert every message to one inbox so a restored production database can't mail real customers.
 
 ## Requirements
@@ -135,6 +135,27 @@ foreach ( ( new LogReader( '/tmp/mail.log' ) )->messages( 20 ) as $message ) {
 
 The `html` is the message as sent, customer-typed content and all: show it in a sandboxed iframe and escape every header, never echo it into an admin page. Newest first. For a development outbox page: the log is exact, and nobody wants to read `=3D` through every attribute. Only the end of a large log is read (`max_bytes`, 4 MiB by default), starting at a whole entry, and attachments are never taken for the body.
 
+### Showing the log in a browser
+
+```php
+use SugarCommerce\Mailer\Transports\{LogReader, LogViewer};
+
+$viewer = new LogViewer(
+    new LogReader( '/tmp/mail.log' ),
+    array(
+        'shop.example.com' => 'http://127.0.0.1:8080',      // production host => where it is served here
+        'app.example.com'  => 'http://127.0.0.1:8080/app',
+    ),
+);
+
+foreach ( $viewer->messages( 20 ) as $message ) {
+    $message['links'];                                        // http(s) hrefs, entities decoded, rewritten
+    echo LogViewer::frame( $message['document'], $message['subject'], array( 'class' => 'h-96 w-full' ) );
+}
+```
+
+For a development outbox page. Each body's links are pointed at this machine, so a magic link works in one click: a host is matched whole, so `shop.example.com.evil.test` is left alone, or pass a closure that is given each URL and returns its replacement. `links()` takes hrefs from the HTML, or URLs from the text when there is no HTML, and only ever returns `http` and `https`. `document()` opens with a Content-Security-Policy that runs no script, plugin, frame or form, ahead of any of the message's markup, so nothing in the message can loosen it; a text-only message is shown escaped. `frame()` puts it in an `<iframe sandbox>` without `allow-scripts` or `allow-same-origin`, escaped into `srcdoc`. Escape the subject and addresses wherever you print them.
+
 ### Testing your own code
 
 ```php
@@ -174,7 +195,7 @@ composer install
 composer test
 ```
 
-70 tests. The MIME layer is asserted structurally — part nesting, boundary uniqueness, encoded-word round trips through `mb_decode_mimeheader`, dot-stuffing, and the absence of a single bare LF anywhere in the output.
+128 tests. The MIME layer is asserted structurally — part nesting, boundary uniqueness, encoded-word round trips through `mb_decode_mimeheader`, dot-stuffing, and the absence of a single bare LF anywhere in the output.
 
 ## License
 
